@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"os"
 
+	"github.com/lipinskipawel/educationalsp/lsp"
 	"github.com/lipinskipawel/educationalsp/rpc"
 )
 
@@ -16,13 +18,29 @@ func main() {
 	scanner.Split(rpc.Split)
 
 	for scanner.Scan() {
-		message := scanner.Text()
-		handleMessage(logger, message)
+		msg := scanner.Bytes()
+		method, content, err := rpc.DecodeMesage(msg)
+		if err != nil {
+			logger.Printf("Got an error: %s", err)
+			continue
+		}
+		handleMessage(logger, method, content)
 	}
 }
 
-func handleMessage(logger *log.Logger, message any) {
-	logger.Println(message)
+func handleMessage(logger *log.Logger, method string, content []byte) {
+	logger.Printf("Received msg with method: %s\n", method)
+
+	switch method {
+	case "initialize":
+		var request lsp.InitializeRequest
+		if err := json.Unmarshal(content, &request); err != nil {
+			logger.Printf("Hey, we couldn't parse this: %s", err)
+		}
+		logger.Printf("Connected to: %s %s",
+			request.Params.ClientInfo.Name,
+			request.Params.ClientInfo.Version)
+	}
 }
 
 func getLogger(filename string) *log.Logger {
